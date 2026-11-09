@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>মাদ্রাসার হিসাব</title>
+<meta name="theme-color" content="#f3f5f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1524" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="মাদ্রাসার হিসাব">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one narrow column. Summary first, then the entry form, then fund balances, ledger and backup. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --field: #f1f4f8;
+  --fg: #17233a;
+  --muted: #5d6b82;
+  --line: #dde3ec;
+  --accent: #1b2a47;
+  --accent-fg: #ffffff;
+  --income: #1f6b3a;
+  --expense: #b3261e;
+  --focus: #2f6fdb;
+  --font: "Hind Siliguri", "Noto Sans Bengali", "Kalpurush", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1524;
+    --surface: #161f33;
+    --field: #1d2840;
+    --fg: #e8edf6;
+    --muted: #95a3ba;
+    --line: #2a3752;
+    --accent: #3d5fb0;
+    --accent-fg: #ffffff;
+    --income: #62d08a;
+    --expense: #ff8d83;
+    --focus: #7aa7ff;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+  padding-top: max(20px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(40px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+h1 { font-size: 1.9rem; line-height: 1.25; margin: 4px 0 0; font-weight: 700; text-wrap: balance; }
+h2 { font-size: 1.2rem; margin: 0 0 14px; font-weight: 700; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* summary */
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 12px 14px; min-width: 0; }
+.tile .k { color: var(--muted); font-size: 0.9rem; }
+.tile .v { font-size: clamp(1rem, 4.8vw, 1.4rem); font-weight: 700; margin-top: 4px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; line-height: 1.3; }
+.v.in { color: var(--income); }
+.v.out { color: var(--expense); }
+.opening-line { color: var(--muted); margin: -4px 2px 0; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 18px; min-width: 0; }
+
+/* form */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.seg button { height: 50px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-weight: 500; }
+.seg button[aria-pressed="true"] { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); font-weight: 700; color: var(--c); }
+#t-in { --c: var(--income); }
+#t-out { --c: var(--expense); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; margin-bottom: 12px; }
+.grid2 .field { margin-bottom: 0; }
+label { color: var(--muted); font-size: 0.95rem; }
+input, select {
+  width: 100%; height: 50px; border: 1px solid var(--line); background: var(--field);
+  border-radius: 12px; padding: 0 14px; min-width: 0;
+}
+select { appearance: none; -webkit-appearance: none; padding-right: 36px; }
+.sel { position: relative; }
+.sel::after {
+  content: ""; position: absolute; right: 15px; top: 50%; width: 7px; height: 7px;
+  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+  transform: translateY(-70%) rotate(45deg); pointer-events: none;
+}
+.btn { width: 100%; height: 52px; border: 0; border-radius: 14px; background: var(--accent); color: var(--accent-fg); font-weight: 700; font-size: 1.05rem; cursor: pointer; }
+.btn:disabled { opacity: 0.6; cursor: default; }
+.msg { min-height: 1.5em; margin: 8px 0 0; font-size: 0.95rem; color: var(--muted); }
+.msg.ok { color: var(--income); }
+.msg.err { color: var(--expense); }
+hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
+
+/* funds */
+.fund { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.fund:first-of-type { border-top: 0; padding-top: 0; }
+.fund .n { font-weight: 600; }
+.fund .s { color: var(--muted); font-size: 0.9rem; overflow-wrap: anywhere; }
+.fund .b { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.note { color: var(--muted); font-size: 0.88rem; margin: 10px 0 0; }
+
+/* ledger */
+.head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.head h2 { margin: 0; }
+.ghost { height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-weight: 500; }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.sub { color: var(--muted); font-size: 0.92rem; margin: 10px 0 4px; font-variant-numeric: tabular-nums; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.row .d { font-weight: 600; overflow-wrap: anywhere; }
+.row .m { color: var(--muted); font-size: 0.88rem; overflow-wrap: anywhere; }
+.row .a { font-weight: 700; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.row .a.in { color: var(--income); }
+.row .a.out { color: var(--expense); }
+.row .act { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.link { background: none; border: 0; padding: 4px 0; color: var(--muted); cursor: pointer; text-decoration: underline; font-size: 0.88rem; }
+.danger { height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--expense); background: transparent; color: var(--expense); cursor: pointer; font-weight: 600; }
+.empty { color: var(--muted); margin: 8px 0; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top">
+    <h1>মাদ্রাসার হিসাব</h1>
+    <button type="button" class="ghost" id="install" hidden>অ্যাপ ইনস্টল করুন</button>
+  </div>
+
+  <div class="tiles" aria-label="সারাংশ">
+    <div class="tile"><div class="k">মোট জমা</div><div class="v in" id="s-in">৳ ০</div></div>
+    <div class="tile"><div class="k">মোট খরচ</div><div class="v out" id="s-out">৳ ০</div></div>
+    <div class="tile"><div class="k">বর্তমান জের</div><div class="v" id="s-bal">৳ ০</div></div>
+  </div>
+  <p class="opening-line" id="s-open">প্রারম্ভিক জের: ০</p>
+
+  <section class="card" aria-labelledby="form-title">
+    <h2 id="form-title">নতুন লেনদেন</h2>
+    <form id="form" novalidate>
+      <div class="seg" role="group" aria-label="লেনদেনের ধরন">
+        <button type="button" id="t-in" aria-pressed="true">জমা (আয়)</button>
+        <button type="button" id="t-out" aria-pressed="false">খরচ (ব্যয়)</button>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="f-date">তারিখ</label><input type="date" id="f-date" required></div>
+        <div class="field"><label for="f-voucher">ভাউচার/রসিদ নং</label><input type="text" id="f-voucher" autocomplete="off"></div>
+      </div>
+      <div class="field"><label for="f-desc">বিবরণ</label><input type="text" id="f-desc" autocomplete="off"></div>
+      <div class="grid2">
+        <div class="field"><label for="f-cat">খাত</label><div class="sel"><select id="f-cat"></select></div></div>
+        <div class="field"><label for="f-fund">ফান্ড</label><div class="sel"><select id="f-fund"></select></div></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label for="f-amount">টাকা</label><input type="text" id="f-amount" inputmode="decimal" autocomplete="off" placeholder="০"></div>
+      <button class="btn" type="submit" id="f-save">সংরক্ষণ করুন</button>
+      <p class="msg" id="msg" role="status" aria-live="polite"></p>
+    </form>
+    <hr>
+    <div class="field"><label for="o-amount">প্রারম্ভিক জের (টাকা)</label><input type="text" id="o-amount" inputmode="decimal" autocomplete="off" placeholder="০"></div>
+    <button class="btn" type="button" id="o-save">প্রারম্ভিক জের সংরক্ষণ</button>
+    <p class="msg" id="o-msg" role="status" aria-live="polite"></p>
+  </section>
+
+  <section class="card" aria-labelledby="fund-title">
+    <h2 id="fund-title">ফান্ড অনুযায়ী জের</h2>
+    <div id="funds"></div>
+    <p class="note">প্রারম্ভিক জের কোনো ফান্ডে ধরা হয়নি।</p>
+  </section>
+
+  <section class="card" aria-labelledby="list-title">
+    <div class="head"><h2 id="list-title">লেনদেনের তালিকা</h2></div>
+    <div class="field" style="margin-bottom:0"><label for="f-month">মাস</label><div class="sel"><select id="f-month"></select></div></div>
+    <p class="sub" id="sub"></p>
+    <div id="list"></div>
+  </section>
+
+  <section class="card" aria-labelledby="bk-title">
+    <h2 id="bk-title">ব্যাকআপ</h2>
+    <p class="note" style="margin:0 0 12px">তথ্য এই ফোনেই জমা থাকে। ব্রাউজারের ডেটা মুছলে বা অ্যাপ সরালে তথ্য হারিয়ে যায়, তাই মাঝে মাঝে ব্যাকআপ ফাইল রেখে দিন।</p>
+    <div class="tools">
+      <button type="button" class="ghost" id="bk-save">ব্যাকআপ ফাইল নিন</button>
+      <button type="button" class="ghost" id="bk-load">ব্যাকআপ ফেরত আনুন</button>
+      <button type="button" class="ghost" id="export">CSV ডাউনলোড</button>
+    </div>
+    <input type="file" id="bk-file" accept=".json,application/json" hidden>
+    <p class="msg" id="bk-msg" role="status" aria-live="polite"></p>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var BN = '০১২৩৪৫৬৭৮৯';
+  var toBn = function (s) { return String(s).replace(/\d/g, function (d) { return BN[d]; }); };
+  var toEn = function (s) { return String(s).replace(/[০-৯]/g, function (d) { return BN.indexOf(d); }); };
+  var nf = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
+  var r2 = function (n) { return Math.round(n * 100) / 100; };
+  var num = function (n) { return toBn(nf.format(Math.abs(n))); };
+  var money = function (n) { return (n < 0 ? '−' : '') + '৳ ' + num(n); };
+  var fmtDate = function (d) {
+    var p = String(d || '').split('-');
+    return p.length === 3 ? toBn(p[2] + '/' + p[1] + '/' + p[0]) : '';
+  };
+  var MONTHS = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+  var monthLabel = function (k) { var p = k.split('-'); return MONTHS[+p[1] - 1] + ' ' + toBn(p[0]); };
+  var todayStr = function () {
+    var d = new Date(), m = d.getMonth() + 1, day = d.getDate();
+    return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
+  };
+
+  var CATS = {
+    in: ['মাসিক চাঁদা', 'দান ও সদকা', 'যাকাত', 'ফিতরা', 'কুরবানির চামড়া', 'ভর্তি ও অন্যান্য ফি', 'অন্যান্য আয়'],
+    out: ['শিক্ষকদের বেতন', 'খাবার ও রান্না', 'বিদ্যুৎ ও পানির বিল', 'ভাড়া', 'মেরামত ও নির্মাণ', 'কিতাব ও শিক্ষা উপকরণ', 'যাতায়াত', 'অন্যান্য খরচ']
+  };
+  var FUNDS = ['সাধারণ ফান্ড', 'যাকাত ফান্ড', 'এতিম ফান্ড', 'নির্মাণ ফান্ড'];
+
+  var $ = function (id) { return document.getElementById(id); };
+  function h(tag, attrs) {
+    var e = document.createElement(tag);
+    for (var k in (attrs || {})) {
+      var v = attrs[k];
+      if (k === 'class') e.className = v;
+      else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), v);
+      else e.setAttribute(k, v);
+    }
+    for (var i = 2; i < arguments.length; i++) {
+      var c = arguments[i];
+      if (c == null || c === false) continue;
+      e.append(c.nodeType ? c : document.createTextNode(c));
+    }
+    return e;
+  }
+
+  var state = { txns: [], opening: 0 };
+  var ui = { type: 'in', month: 'all', confirm: null };
+  var LS = 'madrasa-hisab-v1';
+
+  /* ---------- storage (this phone's browser storage) ---------- */
+  function load() {
+    try {
+      var d = JSON.parse(localStorage.getItem(LS) || 'null');
+      if (d && Array.isArray(d.txns)) { state.txns = d.txns; state.opening = +d.opening || 0; }
+    } catch (e) {}
+  }
+  function persist() {
+    try { localStorage.setItem(LS, JSON.stringify({ txns: state.txns, opening: state.opening })); return true; }
+    catch (e) { return false; }
+  }
+
+  /* ---------- derived data ---------- */
+  function sorted() {
+    return state.txns.slice().sort(function (a, b) {
+      var x = String(b.date || '').localeCompare(String(a.date || ''));
+      return x !== 0 ? x : (b.ts || 0) - (a.ts || 0);
+    });
+  }
+  function totals(list) {
+    var i = 0, o = 0;
+    list.forEach(function (t) { if (t.type === 'out') o += +t.amount || 0; else i += +t.amount || 0; });
+    return { i: r2(i), o: r2(o) };
+  }
+
+  /* ---------- render ---------- */
+  function renderSummary() {
+    var t = totals(state.txns);
+    $('s-in').textContent = money(t.i);
+    $('s-out').textContent = money(t.o);
+    $('s-bal').textContent = money(r2(state.opening + t.i - t.o));
+    $('s-open').textContent = 'প্রারম্ভিক জের: ' + (state.opening < 0 ? '−' : '') + num(state.opening);
+  }
+  function renderFunds() {
+    var box = $('funds'); box.replaceChildren();
+    var names = FUNDS.slice();
+    state.txns.forEach(function (t) { if (t.fund && names.indexOf(t.fund) < 0) names.push(t.fund); });
+    names.forEach(function (n) {
+      var t = totals(state.txns.filter(function (x) { return x.fund === n; }));
+      box.append(h('div', { class: 'fund' },
+        h('div', {}, h('div', { class: 'n' }, n), h('div', { class: 's' }, 'জমা ' + money(t.i) + ' · খরচ ' + money(t.o))),
+        h('div', { class: 'b' }, money(r2(t.i - t.o)))));
+    });
+  }
+  function renderMonths() {
+    var sel = $('f-month');
+    var keys = {};
+    state.txns.forEach(function (t) { if (t.date) keys[String(t.date).slice(0, 7)] = 1; });
+    var list = Object.keys(keys).sort().reverse();
+    if (ui.month !== 'all' && list.indexOf(ui.month) < 0) ui.month = 'all';
+    sel.replaceChildren(h('option', { value: 'all' }, 'সব মাস'));
+    list.forEach(function (k) { sel.append(h('option', { value: k }, monthLabel(k))); });
+    sel.value = ui.month;
+  }
+  function renderList() {
+    var box = $('list'); box.replaceChildren();
+    $('sub').textContent = '';
+    var rows = sorted().filter(function (t) { return ui.month === 'all' || String(t.date || '').indexOf(ui.month) === 0; });
+    if (!rows.length) {
+      box.append(h('p', { class: 'empty' }, state.txns.length ? 'এই মাসে কোনো লেনদেন নেই।' : 'এখনো কোনো লেনদেন নেই। উপরের ফর্মে প্রথম লেনদেন লিখুন।'));
+      return;
+    }
+    var t = totals(rows);
+    $('sub').textContent = toBn(rows.length) + 'টি লেনদেন · জমা ' + money(t.i) + ' · খরচ ' + money(t.o);
+    rows.forEach(function (x) {
+      var isOut = x.type === 'out';
+      var meta = [fmtDate(x.date), x.cat, x.fund, x.voucher ? 'ভাউচার ' + toBn(x.voucher) : ''].filter(Boolean).join(' · ');
+      var row = h('div', { class: 'row' },
+        h('div', {}, h('div', { class: 'd' }, x.desc || x.cat || (isOut ? 'খরচ' : 'জমা')), h('div', { class: 'm' }, meta)),
+        h('div', { class: 'a ' + (isOut ? 'out' : 'in') }, (isOut ? '− ' : '+ ') + money(+x.amount || 0)));
+      var act = h('div', { class: 'act' });
+      if (ui.confirm === x.id) {
+        act.append(h('span', { class: 'm' }, 'মুছে ফেলবেন?'),
+          h('button', { type: 'button', class: 'danger', onclick: function () { removeTxn(x.id); } }, 'হ্যাঁ, মুছুন'),
+          h('button', { type: 'button', class: 'link', onclick: function () { ui.confirm = null; renderList(); } }, 'না'));
+      } else {
+        act.append(h('button', { type: 'button', class: 'link', onclick: function () { ui.confirm = x.id; renderList(); } }, 'মুছুন'));
+      }
+      row.append(act);
+      box.append(row);
+    });
+  }
+  function render() { renderSummary(); renderFunds(); renderMonths(); renderList(); }
+
+  /* ---------- form setup ---------- */
+  function fillCats() {
+    var sel = $('f-cat'), prev = sel.value;
+    sel.replaceChildren();
+    CATS[ui.type].forEach(function (c) { sel.append(h('option', { value: c }, c)); });
+    if (CATS[ui.type].indexOf(prev) >= 0) sel.value = prev;
+  }
+  function setType(t) {
+    ui.type = t;
+    $('t-in').setAttribute('aria-pressed', t === 'in');
+    $('t-out').setAttribute('aria-pressed', t === 'out');
+    fillCats();
+  }
+  function say(el, text, kind) { el.textContent = text; el.className = 'msg' + (kind ? ' ' + kind : ''); }
+  function parseAmount(v) {
+    var s = toEn(v).replace(/[,\s৳]/g, '');
+    if (!/^\d+(\.\d+)?$/.test(s)) return NaN;
+    return r2(parseFloat(s));
+  }
+  var SAVE_FAIL = 'সংরক্ষণ হয়নি। ফোনের স্টোরেজ ভরে গেছে বা ব্রাউজার সংরক্ষণ করতে দিচ্ছে না।';
+  function syncOpeningInput() {
+    var el = $('o-amount');
+    if (document.activeElement !== el) el.value = state.opening ? String(state.opening) : '';
+  }
+
+  /* ---------- actions ---------- */
+  function addTxn(rec) {
+    rec.id = 'l' + Date.now() + Math.random().toString(36).slice(2, 6);
+    state.txns.push(rec);
+    if (!persist()) { state.txns.pop(); return false; }
+    render();
+    return true;
+  }
+  function removeTxn(id) {
+    var old = state.txns;
+    ui.confirm = null;
+    state.txns = old.filter(function (t) { return t.id !== id; });
+    if (!persist()) { state.txns = old; say($('msg'), 'মুছতে পারেনি। আবার চেষ্টা করুন।', 'err'); renderList(); return; }
+    render();
+  }
+
+  $('t-in').addEventListener('click', function () { setType('in'); });
+  $('t-out').addEventListener('click', function () { setType('out'); });
+  $('f-month').addEventListener('change', function (e) { ui.month = e.target.value; ui.confirm = null; renderList(); });
+
+  $('form').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var msg = $('msg');
+    var date = $('f-date').value, amount = parseAmount($('f-amount').value);
+    if (!date) { say(msg, 'তারিখ দিন।', 'err'); return; }
+    if (!(amount > 0)) { say(msg, 'টাকার পরিমাণ সংখ্যায় লিখুন, যেমন ৫০০।', 'err'); return; }
+    var rec = {
+      type: ui.type, date: date, voucher: $('f-voucher').value.trim(), desc: $('f-desc').value.trim(),
+      cat: $('f-cat').value, fund: $('f-fund').value, amount: amount, ts: Date.now()
+    };
+    if (!addTxn(rec)) { say(msg, SAVE_FAIL, 'err'); return; }
+    $('f-voucher').value = ''; $('f-desc').value = ''; $('f-amount').value = '';
+    say(msg, 'সংরক্ষণ হয়েছে।', 'ok');
+  });
+  $('f-amount').addEventListener('input', function () { say($('msg'), ''); });
+
+  $('o-save').addEventListener('click', function () {
+    var raw = $('o-amount').value.trim(), msg = $('o-msg');
+    var n = raw === '' ? 0 : parseAmount(raw);
+    if (isNaN(n)) { say(msg, 'টাকার পরিমাণ সংখ্যায় লিখুন।', 'err'); return; }
+    var old = state.opening;
+    state.opening = n;
+    if (!persist()) { state.opening = old; say(msg, SAVE_FAIL, 'err'); return; }
+    render(); syncOpeningInput();
+    say(msg, 'প্রারম্ভিক জের সংরক্ষণ হয়েছে।', 'ok');
+  });
+
+  /* ---------- files: CSV, backup, restore ---------- */
+  function saveFile(name, text, type) {
+    var url = URL.createObjectURL(new Blob([text], { type: type }));
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+  }
+
+  $('export').addEventListener('click', function () {
+    var q = function (s) { return '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"'; };
+    var lines = [['তারিখ', 'ধরন', 'ভাউচার নং', 'বিবরণ', 'খাত', 'ফান্ড', 'টাকা'].map(q).join(',')];
+    sorted().reverse().forEach(function (t) {
+      lines.push([t.date, t.type === 'out' ? 'খরচ' : 'জমা', t.voucher, t.desc, t.cat, t.fund, t.amount].map(q).join(','));
+    });
+    try {
+      saveFile('madrasa-hisab-' + todayStr() + '.csv', '﻿' + lines.join('\r\n'), 'text/csv;charset=utf-8');
+      say($('bk-msg'), 'CSV ফাইল ডাউনলোড শুরু হয়েছে।', 'ok');
+    } catch (e) { say($('bk-msg'), 'ডাউনলোড করা যায়নি।', 'err'); }
+  });
+
+  $('bk-save').addEventListener('click', function () {
+    var data = { app: 'madrasa-hisab', v: 1, saved: todayStr(), opening: state.opening, txns: state.txns };
+    try {
+      saveFile('madrasa-backup-' + todayStr() + '.json', JSON.stringify(data), 'application/json');
+      say($('bk-msg'), 'ব্যাকআপ ফাইল ডাউনলোড শুরু হয়েছে। ফাইলটা Drive বা WhatsApp-এ রেখে দিন।', 'ok');
+    } catch (e) { say($('bk-msg'), 'ব্যাকআপ নেওয়া যায়নি।', 'err'); }
+  });
+
+  $('bk-load').addEventListener('click', function () { $('bk-file').click(); });
+  $('bk-file').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    var msg = $('bk-msg');
+    var r = new FileReader();
+    r.onerror = function () { say(msg, 'ফাইলটি পড়া যায়নি।', 'err'); };
+    r.onload = function () {
+      var d;
+      try { d = JSON.parse(String(r.result)); } catch (x) { d = null; }
+      if (!d || d.app !== 'madrasa-hisab' || !Array.isArray(d.txns)) { say(msg, 'এটা মাদ্রাসার হিসাবের ব্যাকআপ ফাইল নয়।', 'err'); return; }
+      var stamp = Date.now();
+      var list = d.txns.filter(function (t) {
+        return t && typeof t.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.date) && isFinite(+t.amount) && +t.amount > 0;
+      }).map(function (t, i) {
+        return {
+          id: 'r' + stamp + '_' + i, type: t.type === 'out' ? 'out' : 'in', date: t.date,
+          voucher: String(t.voucher || ''), desc: String(t.desc || ''), cat: String(t.cat || ''),
+          fund: String(t.fund || ''), amount: r2(+t.amount), ts: +t.ts || stamp
+        };
+      });
+      if (!window.confirm(toBn(list.length) + 'টি লেনদেন ফেরত আনা হবে। এখনকার সব তথ্য এটা দিয়ে বদলে যাবে। ঠিক আছে?')) return;
+      var oldT = state.txns, oldO = state.opening;
+      state.txns = list; state.opening = +d.opening || 0;
+      if (!persist()) { state.txns = oldT; state.opening = oldO; say(msg, SAVE_FAIL, 'err'); return; }
+      ui.month = 'all'; ui.confirm = null;
+      render(); syncOpeningInput();
+      say(msg, 'ব্যাকআপ ফেরত এসেছে।', 'ok');
+    };
+    r.readAsText(f);
+  });
+
+  /* ---------- install button and offline support ---------- */
+  var deferred = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault(); deferred = e; $('install').hidden = false;
+  });
+  $('install').addEventListener('click', function () {
+    if (!deferred) return;
+    deferred.prompt();
+    Promise.resolve(deferred.userChoice).catch(function () {}).then(function () { deferred = null; $('install').hidden = true; });
+  });
+  window.addEventListener('appinstalled', function () { $('install').hidden = true; });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+  }
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+
+  /* ---------- start ---------- */
+  FUNDS.forEach(function (f) { $('f-fund').append(h('option', { value: f }, f)); });
+  $('f-date').value = todayStr();
+  setType('in');
+  load();
+  render();
+  syncOpeningInput();
+})();
+</script>
+</body>
+</html>
